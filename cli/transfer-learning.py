@@ -75,7 +75,7 @@ parser.add_argument("-v", "--vis", help="visualize (default: False)", default=Fa
 parser.add_argument("-m", "--model", help="transfer learning model (default: MobileNetV2)", default="MobileNetV2", type=str)
 parser.add_argument("-lr", "--learning-rate", help="learning rate (default: 1e-4)", default=1e-4, type=float)
 parser.add_argument("-bs", "--batch_size", help="batch size (default: 32)", default=32, type=int)
-parser.add_argument("-e", "--epochs", help="number of epochs (default: 100)", default=100, type=int)
+parser.add_argument("-ep", "--epochs", help="number of epochs (default: 100)", default=100, type=int)
 parser.add_argument("-is", "--input_size", help="input size (default: 224)", default=224, type=int)
 # parse args
 args = parser.parse_args()
