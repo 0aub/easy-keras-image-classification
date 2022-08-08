@@ -77,6 +77,7 @@ parser.add_argument("-lr", "--learning-rate", help="learning rate (default: 1e-4
 parser.add_argument("-bs", "--batch_size", help="batch size (default: 32)", default=32, type=int)
 parser.add_argument("-ep", "--epochs", help="number of epochs (default: 100)", default=100, type=int)
 parser.add_argument("-is", "--input_size", help="input size (default: 224)", default=224, type=int)
+parser.add_argument("-s", "--seed", help="seed number (default: 1998)", default=1998, type=int)
 # parse args
 args = parser.parse_args()
 
@@ -165,9 +166,9 @@ def filter_images(data_path):
 # ====== split data folders =======
 # =================================
 
-def split_data_folders(data_path, splitted_data_path):
+def split_data_folders(data_path, splitted_data_path, seed):
     # split the data into train/val
-    splitfolders.ratio(data_path, output=splitted_data_path, ratio=(0.8, 0.2))
+    splitfolders.ratio(data_path, output=splitted_data_path, ratio=(0.8, 0.2), seed=seed)
     # data locations
     train_path = os.path.join(splitted_data_path, "train")
     val_path = os.path.join(splitted_data_path, "val")
@@ -177,7 +178,7 @@ def split_data_folders(data_path, splitted_data_path):
 # ======= data generators =========
 # =================================
 
-def data_generators(train_path, val_path, input_size, batch_size):
+def data_generators(train_path, val_path, input_size, batch_size, seed):
     # create training and validation generators
     # generators are basically like pytorch data loaders
     train_datagen = ImageDataGenerator()
@@ -188,7 +189,7 @@ def data_generators(train_path, val_path, input_size, batch_size):
         class_mode="categorical",
         subset="training",
         shuffle=True,
-        seed=0,
+        seed=seed,
     )
 
     validation_datagen = ImageDataGenerator()
@@ -198,7 +199,7 @@ def data_generators(train_path, val_path, input_size, batch_size):
         batch_size=batch_size,
         class_mode="categorical",
         subset="training",
-        seed=0,
+        seed=seed,
     )
 
     return (train_generator, validation_generator)
@@ -236,7 +237,7 @@ def TL(TL_model, lr, input_size, num_classes):
     # for categorical classification
     opt = Adam
     loss_fn = "categorical_crossentropy"
-    # for bunary classification
+    # for binary classification
     if num_classes == 2:
         opt = SGD
         loss_fn = "binary_crossentropy"
@@ -329,18 +330,25 @@ def evaluate(model, x_val, y_val, y_true, y_pred, exp_name):
 # ======= show data balance =======
 # =================================
 
-def data_balance_plot(data_path, exp_name):
-    # extract labels from the data path
-    labels = os.listdir(args.data_path)
+def data_balance_plot(data_path, splitted_data_path, exp_name):
     # count all the images grouping by labels
-    counters = [len(os.listdir(os.path.join(data_path, label))) for label in labels]
+    counters = []
+    for label in labels:
+        if os.path.exists(data_path):
+            counters.append(len(os.listdir(os.path.join(data_path, label))))
+        elif (
+        os.path.exists(os.path.join(splitted_data_path, "train")) and 
+        os.path.exists(os.path.join(splitted_data_path, "val"))
+        ):
+            counters.append(len(os.listdir(os.path.join(splitted_data_path, "train", label))) + len(os.listdir(os.path.join(splitted_data_path, "val", label))))
+        else:
+            raise Exception('data_balance_plot: no data path')
     # printing the results
-    print("".join([f"{label}:  {counter}\n" for (label, counter) in zip(labels, counters)]))
+    #print("".join([f"{label}:  {counter}\n" for (label, counter) in zip(labels, counters)]))
     # pie plot
     plt.figure(figsize=(8, 8))
     plt.pie(counters, labels=labels, colors=["#EE6666", "#3388BB", "#9988DD", "#EECC55", "#88BB44", "#FFBBBB"])
     plt.savefig(exp_save(exp_name, "balance"), dpi=300)
-    plt.show()
 
 # =================================
 # ======= accuracy and loss =======
@@ -373,7 +381,6 @@ def train_val_history_plot(exp_name):
     plt.xlabel("epochs")
     plt.legend(loc="upper right")
     plt.savefig(exp_save(exp_name, "history"), dpi=300)
-    plt.show()
 
 # =================================
 # ======= confusion matrix ========
@@ -388,7 +395,6 @@ def confusion_matrix_plot(y_true, y_pred, exp_name):
     plt.ylabel("Actual")
     plt.xlabel("Predicted")
     plt.savefig(exp_save(exp_name, "cm"), dpi=300)
-    plt.show()
 
 # ===========================================
 # ==== receiver operating characteristic ====
@@ -407,7 +413,6 @@ def roc_plot(y_true, y_pred, labels, exp_name):
     c_ax.set_ylabel("True Positive Rate")
     plt.legend(loc="best")
     plt.savefig(exp_save(exp_name, "roc"), dpi=300)
-    plt.show()
 
 # ==================================
 # ===== precision recall curve =====
@@ -428,7 +433,6 @@ def pcr_plot(y_true, y_pred, labels, exp_name):
     plt.legend(loc="best")
     plt.title("Precision Recall Curve (PRC)")
     plt.savefig(exp_save(exp_name, "pcr"), dpi=300)
-    plt.show()
 
 # =================================
 # ========= main function =========
@@ -442,7 +446,7 @@ def main(args):
         filter_images(args.data_path)
         # split data folders
         print("\n[INFO]  split to train/val...\n")
-        (train_path, val_path) = split_data_folders(args.data_path, args.splitted_data_path)
+        (train_path, val_path) = split_data_folders(args.data_path, args.splitted_data_path, args.seed)
     # check if the user splitted the data by himself
     elif (
         os.path.exists(os.path.join(args.splitted_data_path, "train")) and 
@@ -455,7 +459,7 @@ def main(args):
 
     # create data generators
     print("\n[INFO]  create generators...\n")
-    (train_generator, validation_generator) = data_generators(train_path, val_path, args.input_size, args.batch_size)
+    (train_generator, validation_generator) = data_generators(train_path, val_path, args.input_size, args.batch_size, args.seed)
 
     # model training
     if args.train:
@@ -496,16 +500,18 @@ def main(args):
 
         # model visualization
         if args.vis:
-            print("\n[INFO]  plotting data labels balance...\n")
-            data_balance_plot(args.data_path, args.exp_name)
-            print("\n[INFO]  plotting model training validation progress...\n")
+            print('\n[INFO]  saving data labels balance...')
+            data_balance_plot(args.data_path, args.splitted_data_path, args.exp_name)
+            print('[INFO]  saving model training validation progress...')
             train_val_history_plot(args.exp_name)
-            print("\n[INFO]  plotting predictions confusion matrix...\n")
+            print('[INFO]  saving predictions confusion matrix...')
             confusion_matrix_plot(y_true, y_pred, args.exp_name)
-            print("\n[INFO]  plotting receiver operating characteristic curve...\n")
+            print('[INFO]  saving receiver operating characteristic curve...')
             roc_plot(y_true, y_pred, labels, args.exp_name)
-            print("\n[INFO]  plotting precision recall curve...\n")
+            print('[INFO]  saving precision recall curve...')
             pcr_plot(y_true, y_pred, labels, args.exp_name)
+        
+        print('\n[INFO]  DONE')
 
 if __name__ == "__main__":
     main(args)

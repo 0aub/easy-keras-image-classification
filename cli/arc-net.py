@@ -40,10 +40,10 @@ parser.add_argument("-e", "--eval", help="eval (default: False)", default=False,
 parser.add_argument("-v", "--vis", help="visualize (default: False)", default=False, action="store_true")
 # train settings
 parser.add_argument("-m", "--model", help="transfer learning model (default: MobileNetV2)", default="MobileNetV2", type=str)
-parser.add_argument("-lr", "--learning-rate", help="learning rate (default: 1e-4)", default=1e-4, type=float)
 parser.add_argument("-bs", "--batch_size", help="batch size (default: 32)", default=32, type=int)
-parser.add_argument("-e", "--epochs", help="number of epochs (default: 100)", default=100, type=int)
+parser.add_argument("-ep", "--epochs", help="number of epochs (default: 100)", default=100, type=int)
 parser.add_argument("-is", "--input_size", help="input size (default: 224)", default=224, type=int)
+parser.add_argument("-s", "--seed", help="seed number (default: 1998)", default=1998, type=int)
 # parse args
 args = parser.parse_args()
 
@@ -585,22 +585,26 @@ def evaluate(true_labels, preds, class_names, class_correct, class_total, exp_na
 # ======= show data balance =======
 # =================================
 
-def data_balance_plot(data_path, exp_name):
-    # extract labels from the data path
-    labels = os.listdir(args.data_path)
+def data_balance_plot(data_path, splitted_data_path, exp_name):
     # count all the images grouping by labels
-    counters = [len(os.listdir(os.path.join(data_path, label))) for label in labels]
+    counters = []
+    for label in labels:
+        if os.path.exists(data_path):
+            counters.append(len(os.listdir(os.path.join(data_path, label))))
+        elif (
+        os.path.exists(os.path.join(splitted_data_path, "train")) and 
+        os.path.exists(os.path.join(splitted_data_path, "val"))
+        ):
+            counters.append(len(os.listdir(os.path.join(splitted_data_path, "train", label))) + len(os.listdir(os.path.join(splitted_data_path, "val", label))))
+        else:
+            raise Exception('data_balance_plot: no data path')
     # printing the results
-    print(''.join([f'{label}:  {counter}\n' for (label, counter) in zip(labels, counters)]))
-
+    #print("".join([f"{label}:  {counter}\n" for (label, counter) in zip(labels, counters)]))
     # pie plot
     plt.figure(figsize=(8, 8))
-    plt.pie(counters, 
-            labels = labels, 
-            colors = ['#EE6666', '#3388BB', '#9988DD','#EECC55', '#88BB44', '#FFBBBB'])
-    plt.savefig(exp_save(exp_name, 'balance'), dpi=300)
-    plt.show()
-
+    plt.pie(counters, labels=labels, colors=["#EE6666", "#3388BB", "#9988DD", "#EECC55", "#88BB44", "#FFBBBB"])
+    plt.savefig(exp_save(exp_name, "balance"), dpi=300)
+    
 # =================================
 # ======= accuracy and loss =======
 # =================================
@@ -634,7 +638,6 @@ def train_val_history_plot(exp_name):
     plt.xlabel('epochs')
     plt.legend(loc="upper right")
     plt.savefig(exp_save(exp_name, 'history'), dpi=300)
-    plt.show()
 
 # =================================
 # ======= confusion matrix ========
@@ -649,7 +652,6 @@ def confusion_matrix_plot(y_true, y_pred, exp_name):
     plt.ylabel('Actual')
     plt.xlabel('Predicted')
     plt.savefig(exp_save(exp_name, 'cm'), dpi=300)
-    plt.show()
 
 # ===========================================
 # ==== receiver operating characteristic ====
@@ -668,7 +670,6 @@ def roc_plot(y_true, y_pred, labels, exp_name):
     c_ax.set_ylabel('True Positive Rate')
     plt.legend(loc="best")
     plt.savefig(exp_save(exp_name, 'roc'), dpi=300)
-    plt.show()
 
 # ==================================
 # ===== precision recall curve =====
@@ -689,39 +690,38 @@ def pcr_plot(y_true, y_pred, labels, exp_name):
     plt.legend(loc="best")
     plt.title("Precision Recall Curve (PRC)")
     plt.savefig(exp_save(exp_name, 'pcr'), dpi=300)
-    plt.show()
     
 # =================================
 # ========= main function =========
 # =================================
 
-def main():
+def main(args):
     # check if the user specified data-path
-    if args.data_path:
+    if os.path.exists(args.data_path):
         # filter and verify the images of the data directory
-        print('[INFO]  filter the images...')
+        print('[INFO]  filter the images...\n')
         filter_images(args.data_path)
         # split data folders
-        print('\n[INFO]  split to train/val...')
-        (train_path, val_path) = split_data_folders(args.data_path, args.splitted_data_path, seed=args.seed)
+        print('\n[INFO]  split to train/val...\n')
+        (train_path, val_path) = split_data_folders(args.data_path, args.splitted_data_path, args.seed)
     if (
         os.path.exists(os.path.join(args.splitted_data_path, "train")) and 
         os.path.exists(os.path.join(args.splitted_data_path, "val"))
     ):
         # get important data objects from its path
-        print('\n[INFO]  extract data objects...')
+        print('\n[INFO]  extract data objects...\n')
         global labels
         (dataloaders, dataset_sizes, labels) = data_objects_extraction(args.splitted_data_path, args.batch_size)
     else:
         raise Exception("please run the code properly. for more information: https://github.com/0aub/")
 
     # initialize encoder, decoder, loss function, and optimizer
-    print('\n[INFO]  initialize model...')
+    print('\n[INFO]  initialize model...\n')
     (encoder, decoder, criterion, optimizer) = get_model()
 
     # model training
     if args.train:
-        print('\n[INFO]  model training...')
+        print('\n[INFO]  model training...\n')
         train(encoder, decoder, criterion, optimizer, dataloaders, dataset_sizes, labels, args.epochs, args.exp_name)
 
     # get predictions of validation data for model evaluation and visualization
@@ -733,21 +733,23 @@ def main():
 
         # model evaluation -> calculate/save accuracy and other measures
         if args.eval:
-            print('\n[INFO]  model evaluation...')
+            print('\n[INFO]  model evaluation...\n')
             evaluate(y_true, y_pred, labels, class_correct, class_total, args.exp_name)
 
         # model visualization
         if args.vis:
-            print('\n[INFO]  plotting data labels balance...\n')
-            data_balance_plot(args.data_path, args.exp_name)
-            print('\n[INFO]  plotting model training validation progress...\n')
+            print('\n[INFO]  saving data labels balance...')
+            data_balance_plot(args.data_path, args.splitted_data_path, args.exp_name)
+            print('[INFO]  saving model training validation progress...')
             train_val_history_plot(args.exp_name)
-            print('\n[INFO]  plotting predictions confusion matrix...\n')
+            print('[INFO]  saving predictions confusion matrix...')
             confusion_matrix_plot(y_true, y_pred, args.exp_name)
-            print('\n[INFO]  plotting receiver operating characteristic curve...\n')
+            print('[INFO]  saving receiver operating characteristic curve...')
             roc_plot(y_true, y_pred, labels, args.exp_name)
-            print('\n[INFO]  plotting precision recall curve...\n')
+            print('[INFO]  saving precision recall curve...')
             pcr_plot(y_true, y_pred, labels, args.exp_name)
+        
+        print('\n[INFO]  DONE')
             
 if __name__ == "__main__":
     main(args)
