@@ -97,9 +97,12 @@ def exp_save(exp_name=None, file_name=None):
 if not os.path.exists(exp_save(args.exp_name)):
     os.makedirs(exp_save(args.exp_name))
 # check for data path to specify the labels
-if args.data_path or os.path.exists(os.path.join(args.splitted_data_path, "train")):
+if os.path.exists(args.data_path):
     # extract labels from the data path
     labels = os.listdir(args.data_path)
+elif os.path.exists(os.path.join(args.splitted_data_path, "train")):
+    # extract labels from the splitted data path
+    labels = os.listdir(os.path.join(args.splitted_data_path, "train"))
 else:
     raise Exception("please run the code properly. for more information: https://github.com/0aub/")
 # count the specified labels
@@ -433,9 +436,9 @@ def pcr_plot(y_true, y_pred, labels, exp_name):
 
 def main(args):
     # check if the user specified data-path
-    if args.data_path:
+    if os.path.exists(args.data_path):
         # filter and verify the images of the data directory
-        print("[INFO]  filter the images...")
+        print("[INFO]  filter the images...\n")
         filter_images(args.data_path)
         # split data folders
         print("\n[INFO]  split to train/val...\n")
@@ -451,16 +454,16 @@ def main(args):
         raise Exception("please run the code properly. for more information: https://github.com/0aub/")
 
     # create data generators
-    print("[INFO]  create generators...")
+    print("\n[INFO]  create generators...\n")
     (train_generator, validation_generator) = data_generators(train_path, val_path, args.input_size, args.batch_size)
 
     # model training
-    print("\n[INFO]  model training...")
     if args.train:
+        print("\n[INFO]  model training...\n")
         # get transfer learning object from its name
-        TL_model = transfer_learning_models[args.transfer_learning_model]
+        TL_model = transfer_learning_models[args.model]
         # initialize the model
-        model = TL(TL_model, args.lr, args.input_size, num_classes)
+        model = TL(TL_model, args.learning_rate, args.input_size, num_classes)
         # train the model
         history = train(
             model,
@@ -474,21 +477,21 @@ def main(args):
     # important variables for model evaluation and progress visualization
     if args.eval or args.vis:
         # extract x_val and y_val from validation generator
-        print("\n[INFO]  extracting validation values...")
+        print("\n[INFO]  extracting validation values...\n")
         (x_val, y_val) = data_extraction(
             validation_generator, args.batch_size, "validation"
         )
         # load saved model
-        print("\n[INFO]  loading experiment model...")
+        print("\n[INFO]  loading experiment model...\n")
         model = load_model(exp_save(args.exp_name, "model"))
         # get y_true and y_pred
-        print("\n[INFO]  predicting validation samples...")
+        print("\n[INFO]  predicting validation samples...\n")
         (y_true, y_pred) = y_true_pred(model, x_val, y_val)
 
         # model evaluation
         if args.eval:
             # evaluate the model
-            print("\n[INFO]  model evaluation...")
+            print("\n[INFO]  model evaluation...\n")
             evaluate(model, x_val, y_val, y_true, y_pred, args.exp_name)
 
         # model visualization
