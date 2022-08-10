@@ -532,7 +532,7 @@ def main(args):
             if args.eval:
                 # evaluate the model
                 print(f"\n[INFO]  {model_name} evaluation...\n")
-                evaluate(model, x_val, y_val, y_true, y_pred, exp_name)
+                evaluate(y_true, y_pred, exp_name)
 
             # model visualization
             if args.vis:
