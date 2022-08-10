@@ -299,11 +299,17 @@ def multiclass_processing(y_test, y_pred, average="macro"):
     y_pred = lb.transform(y_pred)
     return (y_test, y_pred)
 
-def evaluate(model, x_val, y_val, y_true, y_pred, exp_name):
+def evaluate(y_true, y_pred, exp_name):
     # calculate accuracy and loss
-    score = model.evaluate(x_val, y_val, verbose=0)
-    eval = "loss:          %.3f" % score[0]
-    eval += "\naccuracy:      %.3f" % score[1]
+    eval = "accuracy:      %.3f" % metrics.accuracy_score(y_true, y_pred)
+    # calculate Cross-Entropy Loss Function
+    eval += "\nloss:          %.3f" % metrics.log_loss(y_true, y_pred)
+    # calculate Mean Square Error (MSE)
+    eval += "\nMSE:           %.3f" % metrics.mean_squared_error(y_true, y_pred)
+    # calculate Root Mean Square Error (RMSE)
+    eval += "\nRMSE:          %.3f" % metrics.mean_squared_error(y_true, y_pred, squared=False)
+    # calculate Mean Absolute Error (MAE)
+    eval += "\nMAE:           %.3f" % metrics.mean_absolute_error(y_true, y_pred)
     # calculate prediction
     eval += "\nPrecision:     %.3f" % metrics.precision_score(y_true, y_pred, average="macro")
     # calculate recall
@@ -441,17 +447,20 @@ def pcr_plot(y_true, y_pred, labels, exp_name):
 def collect_evaluations(exp_path):
     df = pd.DataFrame()
     df.rename(index={
-                  0: "loss", 
-                  1: "accuracy", 
-                  2: "Precision", 
-                  3: "Recall", 
-                  4: "Cohen’s Kappa", 
-                  5: "MCC", 
-                  6: "ROC Score", 
-                  7: "True Positive", 
-                  8: "True Negative", 
-                  9: "False Positive", 
-                  10: "False Negative",
+                  0: "accuracy", 
+                  1: "loss",
+                  2: "MSE",
+                  3: "RMSE",
+                  4: "MAE",
+                  5: "Precision", 
+                  6: "Recall", 
+                  7: "Cohen’s Kappa", 
+                  8: "MCC", 
+                  9: "ROC Score", 
+                  10: "True Positive", 
+                  11: "True Negative", 
+                  12: "False Positive", 
+                  13: "False Negative",
             })
     for model_name in os.path.listdir(exp_path):
         with open(os.path.join(exp_path, model_name, 'eval.txt')) as f:
