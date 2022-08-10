@@ -56,6 +56,7 @@ from tqdm import tqdm
 import pickle
 import splitfolders
 import argparse
+import math
 import os
 
 # =================================
@@ -302,8 +303,8 @@ def multiclass_processing(y_test, y_pred, average="macro"):
 def evaluate(y_true, y_pred, exp_name):
     # calculate accuracy and loss
     eval = "accuracy:      %.3f" % metrics.accuracy_score(y_true, y_pred)
-    # calculate Cross-Entropy Loss Function
-    eval += "\nloss:          %.3f" % metrics.log_loss(y_true, y_pred)
+    # calculate Categorical Cross-Entropy
+    #eval += "\nloss:          %.3f" % sum([y_true[i] * math.log(y_pred[i]) for i in range(0, len(y_true))])
     # calculate Mean Square Error (MSE)
     eval += "\nMSE:           %.3f" % metrics.mean_squared_error(y_true, y_pred)
     # calculate Root Mean Square Error (RMSE)
@@ -448,25 +449,23 @@ def collect_evaluations(exp_path):
     df = pd.DataFrame()
     df.rename(index={
                   0: "accuracy", 
-                  1: "loss",
-                  2: "MSE",
-                  3: "RMSE",
-                  4: "MAE",
-                  5: "Precision", 
-                  6: "Recall", 
-                  7: "Cohen’s Kappa", 
-                  8: "MCC", 
-                  9: "ROC Score", 
-                  10: "True Positive", 
-                  11: "True Negative", 
-                  12: "False Positive", 
-                  13: "False Negative",
+                  1: "MSE",
+                  2: "RMSE",
+                  3: "MAE",
+                  4: "Precision", 
+                  5: "Recall", 
+                  6: "Cohen’s Kappa", 
+                  7: "MCC", 
+                  8: "ROC Score", 
+                  9: "True Positive", 
+                  10: "True Negative", 
+                  11: "False Positive", 
+                  12: "False Negative",
             })
     for model_name in os.path.listdir(exp_path):
         with open(os.path.join(exp_path, model_name, 'eval.txt')) as f:
-            df = df.assign(steals=[2, 2, 4, 7, 4, 1])
-
-    return 0
+            df = df.assign(model_name=[line.split(':')[-1].replace('\n', '').strip() for line in f.readlines()])
+    df.to_excel(os.path.join(exp_path, "results.xlsx"))
 
 # =================================
 # ========= main function =========
@@ -533,6 +532,7 @@ def main(args):
                 # evaluate the model
                 print(f"\n[INFO]  {model_name} evaluation...\n")
                 evaluate(y_true, y_pred, exp_name)
+                collect_evaluations(args.exp_path)
 
             # model visualization
             if args.vis:
