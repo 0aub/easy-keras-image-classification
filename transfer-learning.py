@@ -532,7 +532,7 @@ def main(args):
                 # evaluate the model
                 print(f"\n[INFO]  {model_name} evaluation...\n")
                 evaluate(y_true, y_pred, exp_name)
-                collect_evaluations(args.exp_path)
+                collect_evaluations(args.exp_name)
 
             # model visualization
             if args.vis:
