@@ -21,8 +21,6 @@ from tensorflow.keras.applications import (
     DenseNet121,
     DenseNet169,
     DenseNet201,
-    NASNetMobile,
-    NASNetLarge,
     EfficientNetB0,
     EfficientNetB1,
     EfficientNetB2,
@@ -125,8 +123,6 @@ transfer_learning_models = {
     "DenseNet121": DenseNet121,
     "DenseNet169": DenseNet169,
     "DenseNet201": DenseNet201,
-    "NASNetMobile": NASNetMobile,
-    "NASNetLarge": NASNetLarge,
     "EfficientNetB0": EfficientNetB0,
     "EfficientNetB1": EfficientNetB1,
     "EfficientNetB2": EfficientNetB2,
@@ -445,13 +441,13 @@ def pcr_plot(y_true, y_pred, labels, exp_name):
 # ===== evaluation collecting =====
 # =================================
 
-def collect_evaluations(exp_path):
+def collect_evaluations(path):
     df = pd.DataFrame()
     df.insert(0, 'measure', ["accuracy", "MSE", "RMSE", "MAE", "Precision", "Recall", "Cohen's Kappa", "MCC", "ROC Score", "True Positive", "True Negative", "False Positive", "False Negative",])
-    for model_name in os.listdir(exp_path):
-        with open(os.path.join(exp_path, model_name, 'eval.txt')) as f:
+    for model_name in [dirname for dirname in os.listdir(path) if os.path.isdir(os.path.join(path, dirname))]:
+        with open(os.path.join(path, model_name, 'eval.txt')) as f:
             df.insert(1, model_name, [line.split(':')[-1].strip() for line in f.readlines()])
-    df.to_excel(os.path.join(exp_path, "results.xlsx"), index=False)
+    df.to_excel(os.path.join(path, "results.xlsx"), index=False)
 
 # =================================
 # ========= main function =========
