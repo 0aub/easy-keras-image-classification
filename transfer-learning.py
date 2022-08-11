@@ -447,24 +447,10 @@ def pcr_plot(y_true, y_pred, labels, exp_name):
 
 def collect_evaluations(exp_path):
     df = pd.DataFrame()
-    df.rename(index={
-                  0: "accuracy", 
-                  1: "MSE",
-                  2: "RMSE",
-                  3: "MAE",
-                  4: "Precision", 
-                  5: "Recall", 
-                  6: "Cohen’s Kappa", 
-                  7: "MCC", 
-                  8: "ROC Score", 
-                  9: "True Positive", 
-                  10: "True Negative", 
-                  11: "False Positive", 
-                  12: "False Negative",
-            })
+    df.insert(0, 'measure', ["accuracy", "MSE", "RMSE", "MAE", "Precision", "Recall", "Cohen's Kappa", "MCC", "ROC Score", "True Positive", "True Negative", "False Positive", "False Negative",])
     for model_name in os.listdir(exp_path):
         with open(os.path.join(exp_path, model_name, 'eval.txt')) as f:
-            df = df.assign(model_name=[line.split(':')[-1].replace('\n', '').strip() for line in f.readlines()])
+            df.insert(-1, model_name, [line.split(':')[-1].strip() for line in f.readlines()])
     df.to_excel(os.path.join(exp_path, "results.xlsx"))
 
 # =================================
