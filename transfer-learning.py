@@ -450,8 +450,8 @@ def collect_evaluations(exp_path):
     df.insert(0, 'measure', ["accuracy", "MSE", "RMSE", "MAE", "Precision", "Recall", "Cohen's Kappa", "MCC", "ROC Score", "True Positive", "True Negative", "False Positive", "False Negative",])
     for model_name in os.listdir(exp_path):
         with open(os.path.join(exp_path, model_name, 'eval.txt')) as f:
-            df.insert(-1, model_name, [line.split(':')[-1].strip() for line in f.readlines()])
-    df.to_excel(os.path.join(exp_path, "results.xlsx"))
+            df.insert(1, model_name, [line.split(':')[-1].strip() for line in f.readlines()])
+    df.to_excel(os.path.join(exp_path, "results.xlsx"), index=False)
 
 # =================================
 # ========= main function =========
