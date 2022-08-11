@@ -471,9 +471,11 @@ def main(args):
         val_path = os.path.join(args.splitted_data_path, "val")
     else:
         raise Exception("please run the code properly. for more information: https://github.com/0aub/")
+    
     # create data generators
     print("\n[INFO]  create generators...\n")
     (train_generator, validation_generator) = data_generators(train_path, val_path, args.input_size, args.batch_size, args.seed)
+    
     # main loop
     for model_name in args.models:
         # create results directory with the current model sub dir if it does not exists
@@ -501,9 +503,7 @@ def main(args):
         if args.eval or args.vis:
             # extract x_val and y_val from validation generator
             print("\n[INFO]  extracting validation values...\n")
-            (x_val, y_val) = data_extraction(
-                validation_generator, args.batch_size, "validation"
-            )
+            (x_val, y_val) = data_extraction(validation_generator, args.batch_size, "validation")
             # load saved model
             model = load_model(exp_path(exp_name, "model"))
             # get y_true and y_pred
@@ -528,9 +528,9 @@ def main(args):
                 print('[INFO]  saving precision recall curve...')
                 pcr_plot(y_true, y_pred, labels, exp_name)
                 
-        if args.eval:
-            collect_evaluations(exp_path(args.exp_name))
-            print('\n[INFO]  DONE')
+    if args.eval:
+        collect_evaluations(exp_path(args.exp_name))
+        print('\n[INFO]  DONE')
 
 if __name__ == "__main__":
     main(args)
