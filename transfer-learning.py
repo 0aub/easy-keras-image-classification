@@ -87,7 +87,7 @@ args = parser.parse_args()
 # ========= save location =========
 # =================================
 
-def exp_save(exp_name=None, file_name=None):
+def exp_path(exp_name=None, file_name=None):
     out_path = "./results"
     exp_path = os.path.join(out_path, exp_name)
     return exp_path if file_name == None else os.path.join(exp_path, file_name)
@@ -263,9 +263,9 @@ def train(model, train_generator, validation_generator, batch_size, epochs, exp_
         validation_steps=validation_steps,
     )
     # save the model
-    model.save(exp_save(exp_name, "model"))
+    model.save(exp_path(exp_name, "model"))
     # save history
-    with open(exp_save(exp_name, "history"), "wb") as file:
+    with open(exp_path(exp_name, "history"), "wb") as file:
         pickle.dump(history.history, file)
     # return training/validation progress data
     return history
@@ -330,7 +330,7 @@ def evaluate(y_true, y_pred, exp_name):
     eval += "\nFalse Negative: " + str(FN)
     # print/write the results
     print(eval)
-    with open(exp_save(exp_name, "eval.txt"), "w+") as f:
+    with open(exp_path(exp_name, "eval.txt"), "w+") as f:
         f.write(eval)
 
 # =================================
@@ -355,7 +355,7 @@ def data_balance_plot(data_path, splitted_data_path, exp_name):
     # pie plot
     plt.figure(figsize=(8, 8))
     plt.pie(counters, labels=labels, colors=["#EE6666", "#3388BB", "#9988DD", "#EECC55", "#88BB44", "#FFBBBB"])
-    plt.savefig(exp_save(exp_name, "balance"), dpi=300)
+    plt.savefig(exp_path(exp_name, "balance"), dpi=300)
 
 # =================================
 # ======= accuracy and loss =======
@@ -363,7 +363,7 @@ def data_balance_plot(data_path, splitted_data_path, exp_name):
 
 def train_val_history_plot(exp_name):
     # load history
-    history = pickle.load(open(exp_save(exp_name, "history"), "rb"))
+    history = pickle.load(open(exp_path(exp_name, "history"), "rb"))
     # style
     colors = cycler("color", ["#EE6666", "#3388BB", "#9988DD", "#EECC55", "#88BB44", "#FFBBBB"])
     plt.rc("axes", facecolor="#E6E6E6", edgecolor="none", axisbelow=True, grid=True, prop_cycle=colors)
@@ -387,7 +387,7 @@ def train_val_history_plot(exp_name):
     plt.ylabel("")
     plt.xlabel("epochs")
     plt.legend(loc="upper right")
-    plt.savefig(exp_save(exp_name, "history"), dpi=300)
+    plt.savefig(exp_path(exp_name, "history"), dpi=300)
 
 # =================================
 # ======= confusion matrix ========
@@ -401,7 +401,7 @@ def confusion_matrix_plot(y_true, y_pred, exp_name):
     sns.heatmap(cm, annot=True, xticklabels=labels, yticklabels=labels)
     plt.ylabel("Actual")
     plt.xlabel("Predicted")
-    plt.savefig(exp_save(exp_name, "cm"), dpi=300)
+    plt.savefig(exp_path(exp_name, "cm"), dpi=300)
 
 # ===========================================
 # ==== receiver operating characteristic ====
@@ -419,7 +419,7 @@ def roc_plot(y_true, y_pred, labels, exp_name):
     c_ax.set_xlabel("False Positive Rate")
     c_ax.set_ylabel("True Positive Rate")
     plt.legend(loc="best")
-    plt.savefig(exp_save(exp_name, "roc"), dpi=300)
+    plt.savefig(exp_path(exp_name, "roc"), dpi=300)
 
 # ==================================
 # ===== precision recall curve =====
@@ -439,7 +439,7 @@ def pcr_plot(y_true, y_pred, labels, exp_name):
     plt.xlabel("recall")
     plt.legend(loc="best")
     plt.title("Precision Recall Curve (PRC)")
-    plt.savefig(exp_save(exp_name, "pcr"), dpi=300)
+    plt.savefig(exp_path(exp_name, "pcr"), dpi=300)
     
 # =================================
 # ===== evaluation collecting =====
@@ -462,7 +462,7 @@ def collect_evaluations(exp_path):
                   11: "False Positive", 
                   12: "False Negative",
             })
-    for model_name in os.path.listdir(exp_path):
+    for model_name in os.listdir(exp_path):
         with open(os.path.join(exp_path, model_name, 'eval.txt')) as f:
             df = df.assign(model_name=[line.split(':')[-1].replace('\n', '').strip() for line in f.readlines()])
     df.to_excel(os.path.join(exp_path, "results.xlsx"))
@@ -495,9 +495,9 @@ def main(args):
     # main loop
     for model_name in args.models:
         # create results directory with the current model sub dir if it does not exists
-        exp_name = exp_save(args.exp_name, model_name)
-        if not os.path.exists(exp_name):
-            os.makedirs(exp_name)
+        exp_name = os.path.join(args.exp_name, model_name)
+        if not os.path.exists(exp_path(exp_name)):
+            os.makedirs(exp_path(exp_name))
         # model training
         if args.train:
             print(f"\n[INFO]  {model_name} training...\n")
@@ -523,7 +523,7 @@ def main(args):
                 validation_generator, args.batch_size, "validation"
             )
             # load saved model
-            model = load_model(exp_save(exp_name, "model"))
+            model = load_model(exp_path(exp_name, "model"))
             # get y_true and y_pred
             (y_true, y_pred) = y_true_pred(model, x_val, y_val)
 
@@ -532,7 +532,6 @@ def main(args):
                 # evaluate the model
                 print(f"\n[INFO]  {model_name} evaluation...\n")
                 evaluate(y_true, y_pred, exp_name)
-                collect_evaluations(args.exp_name)
 
             # model visualization
             if args.vis:
@@ -546,7 +545,9 @@ def main(args):
                 roc_plot(y_true, y_pred, labels, exp_name)
                 print('[INFO]  saving precision recall curve...')
                 pcr_plot(y_true, y_pred, labels, exp_name)
-            
+                
+        if args.eval:
+            collect_evaluations(exp_path(args.exp_name))
             print('\n[INFO]  DONE')
 
 if __name__ == "__main__":
