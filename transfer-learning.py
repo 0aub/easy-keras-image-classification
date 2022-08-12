@@ -105,8 +105,7 @@ elif os.path.exists(os.path.join(args.splitted_data_path, "train")):
     # extract labels from the splitted data path
     labels = os.listdir(os.path.join(args.splitted_data_path, "train"))
 else:
-    raise Exception("problem in data paths, please run the code properly. \
-        for more information: https://github.com/0aub/")
+    raise Exception('problem in data paths in "public params", please run the code properly. for more information: https://github.com/0aub/image-classification')
 # count the specified labels
 num_classes = len(labels)
 # list of all transfer learning from keras applications
@@ -175,8 +174,7 @@ def split_data_folders(data_path, splitted_data_path, train_ratio, seed):
         val_path = os.path.join(splitted_data_path, "val")
         return (train_path, val_path)
     else:
-        raise Exception("wrong training ratio, please run the code properly. \
-            for more information: https://github.com/0aub/image-classification")
+        raise Exception("wrong training ratio, please run the code properly. for more information: https://github.com/0aub/image-classification")
 
 # =================================
 # ======= data generators =========
@@ -357,8 +355,7 @@ def data_balance_plot(data_path, splitted_data_path, exp_name):
         ):
             counters.append(len(os.listdir(os.path.join(splitted_data_path, "train", label))) + len(os.listdir(os.path.join(splitted_data_path, "val", label))))
         else:
-            raise Exception('cannot plot "data balance plot" without the data path. \
-                for more information: https://github.com/0aub/image-classification')
+            raise Exception('cannot plot "data balance plot" without the data path. for more information: https://github.com/0aub/image-classification')
     # printing the results
     #print("".join([f"{label}:  {counter}\n" for (label, counter) in zip(labels, counters)]))
     # pie plot
@@ -483,8 +480,7 @@ def main(args):
         print("\n[INFO]  split to train/val...\n")
         (train_path, val_path) = split_data_folders(args.data_path, args.splitted_data_path, args.training_ratio, args.seed)
     else:
-        raise Exception("please run the code properly. \
-            for more information: https://github.com/0aub/image-classification")
+        raise Exception("please run the code properly. for more information: https://github.com/0aub/image-classification")
     
     if args.train or args.eval or args.vis:
         # create data generators
