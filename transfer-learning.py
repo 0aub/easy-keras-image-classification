@@ -486,70 +486,71 @@ def main(args):
         raise Exception("please run the code properly. \
             for more information: https://github.com/0aub/image-classification")
     
-    # create data generators
-    print("\n[INFO]  create generators...\n")
-    (train_generator, validation_generator) = data_generators(train_path, val_path, args.input_size, args.batch_size, args.seed)
-    
-    # main loop
-    models = list(transfer_learning_models.keys()) if 'all' in args.models else args.models
-    for model_name in models:
-        # create results directory with the current model sub dir if it does not exists
-        exp_name = os.path.join(args.exp_name, model_name)
-        if not os.path.exists(exp_path(exp_name)):
-            os.makedirs(exp_path(exp_name))
-        # to continue training 
-        elif args.continue_training and os.path.exists(os.path.join(exp_path(exp_name), 'model')):
-                continue
+    if args.train or args.eval or args.vis:
+        # create data generators
+        print("\n[INFO]  create generators...\n")
+        (train_generator, validation_generator) = data_generators(train_path, val_path, args.input_size, args.batch_size, args.seed)
+        
+        # main loop
+        models = list(transfer_learning_models.keys()) if 'all' in args.models else args.models
+        for model_name in models:
+            # create results directory with the current model sub dir if it does not exists
+            exp_name = os.path.join(args.exp_name, model_name)
+            if not os.path.exists(exp_path(exp_name)):
+                os.makedirs(exp_path(exp_name))
+            # to continue training 
+            elif args.continue_training and os.path.exists(os.path.join(exp_path(exp_name), 'model')):
+                    continue
 
-        # model training
-        if args.train:
-            print(f"\n[INFO]  {model_name} training...\n")
-            # get transfer learning object from its name
-            TL_model = transfer_learning_models[model_name]
-            # initialize the model
-            model = TL(TL_model, args.learning_rate, args.input_size, num_classes)
-            # train the model
-            history = train(
-                model,
-                train_generator,
-                validation_generator,
-                args.batch_size,
-                args.epochs,
-                exp_name,
-            )
+            # model training
+            if args.train:
+                print(f"\n[INFO]  {model_name} training...\n")
+                # get transfer learning object from its name
+                TL_model = transfer_learning_models[model_name]
+                # initialize the model
+                model = TL(TL_model, args.learning_rate, args.input_size, num_classes)
+                # train the model
+                history = train(
+                    model,
+                    train_generator,
+                    validation_generator,
+                    args.batch_size,
+                    args.epochs,
+                    exp_name,
+                )
 
-        # important variables for model evaluation and progress visualization
-        if args.eval or args.vis:
-            # extract x_val and y_val from validation generator
-            print("\n[INFO]  extracting validation values...\n")
-            (x_val, y_val) = data_extraction(validation_generator, args.batch_size, "validation")
-            # load saved model
-            model = load_model(exp_path(exp_name, "model"))
-            # get y_true and y_pred
-            (y_true, y_pred) = y_true_pred(model, x_val, y_val)
+            # important variables for model evaluation and progress visualization
+            if args.eval or args.vis:
+                # extract x_val and y_val from validation generator
+                print("\n[INFO]  extracting validation values...\n")
+                (x_val, y_val) = data_extraction(validation_generator, args.batch_size, "validation")
+                # load saved model
+                model = load_model(exp_path(exp_name, "model"))
+                # get y_true and y_pred
+                (y_true, y_pred) = y_true_pred(model, x_val, y_val)
 
-            # model evaluation
-            if args.eval:
-                # evaluate the model
-                print(f"\n[INFO]  {model_name} evaluation...\n")
-                evaluate(y_true, y_pred, exp_name)
+                # model evaluation
+                if args.eval:
+                    # evaluate the model
+                    print(f"\n[INFO]  {model_name} evaluation...\n")
+                    evaluate(y_true, y_pred, exp_name)
 
-            # model visualization
-            if args.vis:
-                print('\n[INFO]  saving data labels balance...')
-                data_balance_plot(args.data_path, args.splitted_data_path, exp_name)
-                print(f'[INFO]  saving {model_name} training validation progress...')
-                train_val_history_plot(exp_name)
-                print('[INFO]  saving predictions confusion matrix...')
-                confusion_matrix_plot(y_true, y_pred, exp_name)
-                print('[INFO]  saving receiver operating characteristic curve...')
-                roc_plot(y_true, y_pred, labels, exp_name)
-                print('[INFO]  saving precision recall curve...')
-                pcr_plot(y_true, y_pred, labels, exp_name)
-                
-    if args.eval:
-        collect_evaluations(exp_path(args.exp_name))
-        print('\n[INFO]  DONE')
+                # model visualization
+                if args.vis:
+                    print('\n[INFO]  saving data labels balance...')
+                    data_balance_plot(args.data_path, args.splitted_data_path, exp_name)
+                    print(f'[INFO]  saving {model_name} training validation progress...')
+                    train_val_history_plot(exp_name)
+                    print('[INFO]  saving predictions confusion matrix...')
+                    confusion_matrix_plot(y_true, y_pred, exp_name)
+                    print('[INFO]  saving receiver operating characteristic curve...')
+                    roc_plot(y_true, y_pred, labels, exp_name)
+                    print('[INFO]  saving precision recall curve...')
+                    pcr_plot(y_true, y_pred, labels, exp_name)
+                    
+        if args.eval:
+            collect_evaluations(exp_path(args.exp_name))
+            print('\n[INFO]  DONE')
 
 if __name__ == "__main__":
     main(args)
