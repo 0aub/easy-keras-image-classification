@@ -2,6 +2,7 @@
 # ======= import libraries ========
 # =================================
 
+from tensorflow.keras.metrics import binary_accuracy, categorical_accuracy, top_k_categorical_accuracy
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications import (
@@ -64,15 +65,17 @@ import os
 parser = argparse.ArgumentParser()
 # experiment name
 parser.add_argument("-en", "--exp-name", help="experiment name (default: mobile-net-v2-exp)", default="mobile-net-v2-exp", type=str)
-# data paths
+# data
 parser.add_argument("-d", "--data-path", help="data path (default: ./data)", default="./data", type=str)
 parser.add_argument("-sd", "--splitted-data-path", help="splitted data path (default: ./splitted_data)", default="./splitted_data", type=str)
+parser.add_argument("-tr", "--training-ratio", help="training ratio (default: 0.8)", default=0.8, type=float)
 # run settings
 parser.add_argument("-t", "--train", help="train (default: False)", default=False, action="store_true")
 parser.add_argument("-e", "--eval", help="eval (default: False)", default=False, action="store_true")
 parser.add_argument("-v", "--vis", help="visualize (default: False)", default=False, action="store_true")
+parser.add_argument("-ct", "--continue-training", help="continue training (default: False)", default=False, action="store_true")
 # train settings
-parser.add_argument("-m", "--models", help="transfer learning model (default: MobileNetV2)", default="MobileNetV2", nargs='+')
+parser.add_argument("-m", "--models", help="transfer learning model (default: all)", default="all", nargs='+')
 parser.add_argument("-lr", "--learning-rate", help="learning rate (default: 1e-4)", default=1e-4, type=float)
 parser.add_argument("-bs", "--batch_size", help="batch size (default: 32)", default=32, type=int)
 parser.add_argument("-ep", "--epochs", help="number of epochs (default: 100)", default=100, type=int)
@@ -102,7 +105,8 @@ elif os.path.exists(os.path.join(args.splitted_data_path, "train")):
     # extract labels from the splitted data path
     labels = os.listdir(os.path.join(args.splitted_data_path, "train"))
 else:
-    raise Exception("please run the code properly. for more information: https://github.com/0aub/")
+    raise Exception("problem in data paths, please run the code properly. \
+        for more information: https://github.com/0aub/")
 # count the specified labels
 num_classes = len(labels)
 # list of all transfer learning from keras applications
@@ -161,13 +165,18 @@ def filter_images(data_path):
 # ====== split data folders =======
 # =================================
 
-def split_data_folders(data_path, splitted_data_path, seed):
-    # split the data into train/val
-    splitfolders.ratio(data_path, output=splitted_data_path, ratio=(0.8, 0.2), seed=seed)
-    # data locations
-    train_path = os.path.join(splitted_data_path, "train")
-    val_path = os.path.join(splitted_data_path, "val")
-    return (train_path, val_path)
+def split_data_folders(data_path, splitted_data_path, train_ratio, seed):
+    if train_ratio > 0 and train_ratio < 1:
+        val_ratio = 1 - train_ratio
+        # split the data into train/val
+        splitfolders.ratio(data_path, output=splitted_data_path, ratio=(train_ratio, val_ratio), seed=seed)
+        # data locations
+        train_path = os.path.join(splitted_data_path, "train")
+        val_path = os.path.join(splitted_data_path, "val")
+        return (train_path, val_path)
+    else:
+        raise Exception("wrong training ratio, please run the code properly. \
+            for more information: https://github.com/0aub/image-classification")
 
 # =================================
 # ======= data generators =========
@@ -237,7 +246,7 @@ def TL(TL_model, lr, input_size, num_classes):
         opt = SGD
         loss_fn = "binary_crossentropy"
     # build the model with the optimizer and loss function
-    model.compile(optimizer=opt(learning_rate=lr, decay=1e-6), loss=loss_fn, metrics=["accuracy"])
+    model.compile(optimizer=opt(learning_rate=lr), loss=loss_fn, metrics=["accuracy"])
     model.build(input_shape)
     return model
 
@@ -297,27 +306,30 @@ def multiclass_processing(y_test, y_pred, average="macro"):
     return (y_test, y_pred)
 
 def evaluate(y_true, y_pred, exp_name):
+    processed_y_true, processed_y_pred = multiclass_processing(y_true, y_pred)
     # calculate accuracy and loss
-    eval = "accuracy:      %.3f" % metrics.accuracy_score(y_true, y_pred)
+    if num_classes > 2:
+        eval = "accuracy:       %.3f" % categorical_accuracy(y_true, y_pred)
+    else:
+        eval = "accuracy:       %.3f" % binary_accuracy(y_true, y_pred, threshold=0.5)
     # calculate Categorical Cross-Entropy
     #eval += "\nloss:          %.3f" % sum([y_true[i] * math.log(y_pred[i]) for i in range(0, len(y_true))])
     # calculate Mean Square Error (MSE)
-    eval += "\nMSE:           %.3f" % metrics.mean_squared_error(y_true, y_pred)
+    eval += "\nMSE:            %.3f" % metrics.mean_squared_error(y_true, y_pred)
     # calculate Root Mean Square Error (RMSE)
-    eval += "\nRMSE:          %.3f" % metrics.mean_squared_error(y_true, y_pred, squared=False)
+    eval += "\nRMSE:           %.3f" % metrics.mean_squared_error(y_true, y_pred, squared=False)
     # calculate Mean Absolute Error (MAE)
-    eval += "\nMAE:           %.3f" % metrics.mean_absolute_error(y_true, y_pred)
+    eval += "\nMAE:            %.3f" % metrics.mean_absolute_error(y_true, y_pred)
     # calculate prediction
-    eval += "\nPrecision:     %.3f" % metrics.precision_score(y_true, y_pred, average="macro")
+    eval += "\nPrecision:      %.3f" % metrics.precision_score(y_true, y_pred, average="macro")
     # calculate recall
-    eval += "\nRecall:        %.3f" % metrics.recall_score(y_true, y_pred, average="macro")
+    eval += "\nRecall:         %.3f" % metrics.recall_score(y_true, y_pred, average="macro")
     # Calculate Cohen’s Kappa
-    eval += "\nCohen’s Kappa: %.3f" % metrics.cohen_kappa_score(y_true, y_pred)
+    eval += "\nCohen’s Kappa:  %.3f" % metrics.cohen_kappa_score(y_true, y_pred)
     # Calculate Matthews correlation coefficient (MCC)
-    eval += "\nMCC:           %.3f" % metrics.matthews_corrcoef(y_true, y_pred)
+    eval += "\nMCC:            %.3f" % metrics.matthews_corrcoef(y_true, y_pred)
     # Calculate Receiver Operating Characteristic (ROC)
-    processed_y_true, processed_y_pred = multiclass_processing(y_true, y_pred)
-    eval += "\nROC Score:     %.3f" % metrics.roc_auc_score(processed_y_true, processed_y_pred, average="macro")
+    eval += "\nROC Score:      %.3f" % metrics.roc_auc_score(processed_y_true, processed_y_pred, average="macro")
     # calculate True Positive, True Negative, False Positive and False Negative rates
     TP, FP, FP, FN = performance_measures(y_true, y_pred)
     eval += "\nTrue Positive:  " + str(TP)
@@ -345,7 +357,8 @@ def data_balance_plot(data_path, splitted_data_path, exp_name):
         ):
             counters.append(len(os.listdir(os.path.join(splitted_data_path, "train", label))) + len(os.listdir(os.path.join(splitted_data_path, "val", label))))
         else:
-            raise Exception('data_balance_plot: no data path')
+            raise Exception('cannot plot "data balance plot" without the data path. \
+                for more information: https://github.com/0aub/image-classification')
     # printing the results
     #print("".join([f"{label}:  {counter}\n" for (label, counter) in zip(labels, counters)]))
     # pie plot
@@ -442,11 +455,14 @@ def pcr_plot(y_true, y_pred, labels, exp_name):
 # =================================
 
 def collect_evaluations(path):
-    df = pd.DataFrame()
-    df.insert(0, 'measure', ["accuracy", "MSE", "RMSE", "MAE", "Precision", "Recall", "Cohen's Kappa", "MCC", "ROC Score", "True Positive", "True Negative", "False Positive", "False Negative",])
+    # excel columns
+    header = ["model", "accuracy", "MSE", "RMSE", "MAE", "Precision", "Recall", "Cohen's Kappa", "MCC", "ROC Score", "True Positive", "True Negative", "False Positive", "False Negative"]
+    df = pd.DataFrame(columns=header)
     for model_name in [dirname for dirname in os.listdir(path) if os.path.isdir(os.path.join(path, dirname))]:
         with open(os.path.join(path, model_name, 'eval.txt')) as f:
-            df.insert(1, model_name, [line.split(':')[-1].strip() for line in f.readlines()])
+            row = [line.split(':')[-1].strip() for line in f.readlines()]
+            row.insert(0, model_name)
+            df = df.append(row)
     df.to_excel(os.path.join(path, "results.xlsx"), index=False)
 
 # =================================
@@ -454,34 +470,37 @@ def collect_evaluations(path):
 # =================================
 
 def main(args):
+    # check if the user splitted the data by himself
+    if (os.path.exists(os.path.join(args.splitted_data_path, "train")) and os.path.exists(os.path.join(args.splitted_data_path, "val"))):
+        train_path = os.path.join(args.splitted_data_path, "train")
+        val_path = os.path.join(args.splitted_data_path, "val")
     # check if the user specified data-path
-    if os.path.exists(args.data_path):
+    elif os.path.exists(args.data_path):
         # filter and verify the images of the data directory
         print("[INFO]  filter the images...\n")
         filter_images(args.data_path)
         # split data folders
         print("\n[INFO]  split to train/val...\n")
-        (train_path, val_path) = split_data_folders(args.data_path, args.splitted_data_path, args.seed)
-    # check if the user splitted the data by himself
-    elif (
-        os.path.exists(os.path.join(args.splitted_data_path, "train")) and 
-        os.path.exists(os.path.join(args.splitted_data_path, "val"))
-    ):
-        train_path = os.path.join(args.splitted_data_path, "train")
-        val_path = os.path.join(args.splitted_data_path, "val")
+        (train_path, val_path) = split_data_folders(args.data_path, args.splitted_data_path, args.training_ratio, args.seed)
     else:
-        raise Exception("please run the code properly. for more information: https://github.com/0aub/")
+        raise Exception("please run the code properly. \
+            for more information: https://github.com/0aub/image-classification")
     
     # create data generators
     print("\n[INFO]  create generators...\n")
     (train_generator, validation_generator) = data_generators(train_path, val_path, args.input_size, args.batch_size, args.seed)
     
     # main loop
-    for model_name in args.models:
+    models = list(transfer_learning_models.keys()) if 'all' in args.models else args.models
+    for model_name in models:
         # create results directory with the current model sub dir if it does not exists
         exp_name = os.path.join(args.exp_name, model_name)
         if not os.path.exists(exp_path(exp_name)):
             os.makedirs(exp_path(exp_name))
+        # to continue training 
+        elif args.continue_training and os.path.exists(os.path.join(exp_path(exp_name), 'model')):
+                continue
+
         # model training
         if args.train:
             print(f"\n[INFO]  {model_name} training...\n")
