@@ -230,7 +230,7 @@ def TL(TL_model, scratch, lr, input_size, num_classes):
     input_shape = (input_size, input_size, 3)
     # create base transfer learning model
     if scratch:
-        conv_base = TL_model(include_top=False, weights='None', input_shape=input_shape)
+        conv_base = TL_model(include_top=False, weights=None, input_shape=input_shape)
     else:
         conv_base = TL_model(include_top=False, weights="imagenet", input_shape=input_shape)
     # create additional layers for the base model
