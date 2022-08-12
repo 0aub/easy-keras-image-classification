@@ -74,12 +74,14 @@ parser.add_argument("-t", "--train", help="train (default: False)", default=Fals
 parser.add_argument("-e", "--eval", help="eval (default: False)", default=False, action="store_true")
 parser.add_argument("-v", "--vis", help="visualize (default: False)", default=False, action="store_true")
 parser.add_argument("-ct", "--continue-training", help="continue training (default: False)", default=False, action="store_true")
-# train settings
+# model
+parser.add_argument("-sc", "--scratch", help="train model without pre-trained weights (default: False)", default=False, action="store_true")
 parser.add_argument("-m", "--models", help="transfer learning model (default: all)", default="all", nargs='+')
+parser.add_argument("-is", "--input_size", help="input size (default: 224)", default=224, type=int)
+# train settings
 parser.add_argument("-lr", "--learning-rate", help="learning rate (default: 1e-4)", default=1e-4, type=float)
 parser.add_argument("-bs", "--batch_size", help="batch size (default: 32)", default=32, type=int)
 parser.add_argument("-ep", "--epochs", help="number of epochs (default: 100)", default=100, type=int)
-parser.add_argument("-is", "--input_size", help="input size (default: 224)", default=224, type=int)
 parser.add_argument("-s", "--seed", help="seed number (default: 1998)", default=1998, type=int)
 # parse args
 args = parser.parse_args()
@@ -223,11 +225,14 @@ def data_extraction(generator, batch_size, title):
 # ===== model initialization ======
 # =================================
 
-def TL(TL_model, lr, input_size, num_classes):
+def TL(TL_model, scratch, lr, input_size, num_classes):
     # generate image shape form its size
     input_shape = (input_size, input_size, 3)
     # create base transfer learning model
-    conv_base = TL_model(include_top=False, weights="imagenet", input_shape=input_shape)
+    if scratch:
+        conv_base = TL_model(include_top=False, input_shape=input_shape)
+    else:
+        conv_base = TL_model(include_top=False, weights="imagenet", input_shape=input_shape)
     # create additional layers for the base model
     top_model = conv_base.output
     top_model = Flatten(name="flatten")(top_model)
@@ -504,7 +509,7 @@ def main(args):
                 # get transfer learning object from its name
                 TL_model = transfer_learning_models[model_name]
                 # initialize the model
-                model = TL(TL_model, args.learning_rate, args.input_size, num_classes)
+                model = TL(TL_model, args.scratch, args.learning_rate, args.input_size, num_classes)
                 # train the model
                 history = train(
                     model,
