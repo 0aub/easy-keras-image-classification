@@ -153,6 +153,7 @@ transfer_learning_models = {
 
 def filter_images(data_path):
     # remove every file not verified as image
+    errors = []
     for dir in os.listdir(data_path):
         label_path = os.path.join(data_path, dir)
         for img in tqdm(os.listdir(label_path), desc=f"filtering {dir} dir: "):
@@ -161,10 +162,11 @@ def filter_images(data_path):
                 img = Image.open(img_path)  # open the image file
                 img.verify()  # verify that it is, in fact an image
                 if not img_path.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif')):
-                    raise Exception()
+                    raise IOError()
             except (IOError, SyntaxError) as e:
-                print(img_path)
+                errors.append(img_path)
                 os.remove(img_path)
+    print('Deleted images: ', errors)
 
 # =================================
 # ====== split data folders =======
