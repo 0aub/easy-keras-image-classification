@@ -83,6 +83,8 @@ parser.add_argument("-lr", "--learning-rate", help="learning rate (default: 1e-4
 parser.add_argument("-bs", "--batch_size", help="batch size (default: 32)", default=32, type=int)
 parser.add_argument("-ep", "--epochs", help="number of epochs (default: 100)", default=100, type=int)
 parser.add_argument("-s", "--seed", help="seed number (default: 1998)", default=1998, type=int)
+# image processing
+#parser.add_argument("-d", "--data-path", help="data path (default: ./data)", default="./data", type=str)
 # parse args
 args = parser.parse_args()
 
@@ -158,6 +160,8 @@ def filter_images(data_path):
             try:
                 img = Image.open(img_path)  # open the image file
                 img.verify()  # verify that it is, in fact an image
+                if not img_path.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif')):
+                    raise Exception()
             except (IOError, SyntaxError) as e:
                 print(img_path)
                 os.remove(img_path)
