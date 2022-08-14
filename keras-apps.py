@@ -2,7 +2,21 @@
 # ======= import libraries ========
 # =================================
 
-from tensorflow.keras.metrics import binary_accuracy, categorical_accuracy, top_k_categorical_accuracy
+from tensorflow.keras.metrics import (
+    CategoricalAccuracy,
+    TopKCategoricalAccuracy,
+    CategoricalCrossentropy,
+    MeanAbsoluteError,
+    MeanAbsolutePercentageError,
+    MeanSquaredError,
+    MeanSquaredLogarithmicError,
+    RootMeanSquaredError,
+    LogCoshError,
+    CategoricalHinge,
+    CosineSimilarity,
+    KLDivergence,
+    Poisson,
+)
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications import (
@@ -147,6 +161,23 @@ transfer_learning_models = {
     "EfficientNetV2L": EfficientNetV2L,
 }
 
+categorical_measures = [
+    'Model',
+    'Accuracy',
+    'Top 1 Accuracy',
+    'Top 5 Accuracy',
+    'Categorical Cross-Entropy',
+    'Mean Absolute Error',
+    'Mean Squared Error',
+    'Mean Squared Logarithmic Error',
+    'Root Mean Square Error',
+    'Log Cosh Error',
+    'Categorical Hinge',
+    'Cosine Similarity',
+    'KLDivergence',
+    'Poisson',
+]
+
 # =================================
 # ======== data filtering =========
 # =================================
@@ -290,62 +321,57 @@ def train(model, train_generator, validation_generator, batch_size, epochs, exp_
 # ======= model evaluation ========
 # =================================
 
-def y_true_pred(model, x, y):
-    preds = model.predict(x)
-    y_pred = y_pred = [1 * (x[0] >= 0.5) for x in preds]
-    y_true = np.argmax(y, axis=1)
-    return (y_true, y_pred)
-
-def performance_measures(y_true, y_pred):
-    TP, FP, TN, FN = (0, 0, 0, 0)
-    for i in range(len(y_pred)):
-        if y_true[i] == y_pred[i] == 1:
-            TP += 1
-        if y_pred[i] == 1 and y_true[i] != y_pred[i]:
-            FP += 1
-        if y_true[i] == y_pred[i] == 0:
-            TN += 1
-        if y_pred[i] == 0 and y_true[i] != y_pred[i]:
-            FN += 1
-    return (TP, FP, TN, FN)
-
 def multiclass_processing(y_test, y_pred, average="macro"):
+    y_pred = y_pred = [1 * (x[0] >= 0.5) for x in y_pred]
+    y_test = np.argmax(y_test, axis=1)
     lb = LabelBinarizer()
     lb.fit(y_test)
     y_test = lb.transform(y_test)
     y_pred = lb.transform(y_pred)
     return (y_test, y_pred)
 
+def y_true_pred(model, x, y):
+    preds = model.predict(x)
+    return (y, preds)
+
+def measure(title, y_true, y_pred):
+    measures = {
+        'CategoricalAccuracy': CategoricalAccuracy(),
+        'Top-1-CategoricalAccuracy': TopKCategoricalAccuracy(k=1),
+        'Top-5-CategoricalAccuracy': TopKCategoricalAccuracy(k=5),
+        'CategoricalCrossentropy': CategoricalCrossentropy(),
+        'MeanAbsoluteError': MeanAbsoluteError(),
+        'MeanAbsolutePercentageError': MeanAbsolutePercentageError(),
+        'MeanSquaredError': MeanSquaredError(),
+        'MeanSquaredLogarithmicError': MeanSquaredLogarithmicError(),
+        'RootMeanSquaredError': RootMeanSquaredError(),
+        'LogCoshError': LogCoshError(),
+        'CategoricalHinge': CategoricalHinge(),
+        'CosineSimilarity': CosineSimilarity(),
+        'KLDivergence': KLDivergence(),
+        'Poisson': Poisson(),
+    }
+    m = measures[title].update_state(y_true, y_pred)
+    return m.result().numpy()
+
 def evaluate(y_true, y_pred, exp_name):
-    # calculate True Positive, True Negative, False Positive and False Negative rates
-    (TP, FP, TN, FN) = performance_measures(y_true, y_pred)
-    # calculate accuracy and loss
-    eval = "accuracy:       %.3f" % ((TP + TN) / (TP + FP + TN + FN))
-    # calculate Categorical Cross-Entropy
-    #eval += "\nloss:          %.3f" % sum([y_true[i] * math.log(y_pred[i]) for i in range(0, len(y_true))])
-    # calculate Mean Square Error (MSE)
-    eval += "\nMSE:            %.3f" % metrics.mean_squared_error(y_true, y_pred)
-    # calculate Root Mean Square Error (RMSE)
-    eval += "\nRMSE:           %.3f" % metrics.mean_squared_error(y_true, y_pred, squared=False)
-    # calculate Mean Absolute Error (MAE)
-    eval += "\nMAE:            %.3f" % metrics.mean_absolute_error(y_true, y_pred)
-    # calculate prediction
-    eval += "\nPrecision:      %.3f" % metrics.precision_score(y_true, y_pred, average="macro")
-    # calculate recall
-    eval += "\nRecall:         %.3f" % metrics.recall_score(y_true, y_pred, average="macro")
-    # Calculate Cohen’s Kappa
-    eval += "\nCohen’s Kappa:  %.3f" % metrics.cohen_kappa_score(y_true, y_pred)
-    # Calculate Matthews correlation coefficient (MCC)
-    eval += "\nMCC:            %.3f" % metrics.matthews_corrcoef(y_true, y_pred)
-    # Calculate Receiver Operating Characteristic (ROC)
-    processed_y_true, processed_y_pred = multiclass_processing(y_true, y_pred)
-    eval += "\nROC Score:      %.3f" % metrics.roc_auc_score(processed_y_true, processed_y_pred, average="macro")
-    # assign True Positive, True Negative, False Positive and False Negative rates
-    TP, FP, FP, FN = performance_measures(y_true, y_pred)
-    eval += "\nTrue Positive:  " + str(TP)
-    eval += "\nTrue Negative:  " + str(TN)
-    eval += "\nFalse Positive: " + str(FP)
-    eval += "\nFalse Negative: " + str(FN)
+    # calculate accuracy
+    eval = f"{categorical_measures[1]}:                         %.3f" % measure('CategoricalAccuracy', y_true, y_pred)
+    eval += f"\n{categorical_measures[2]}:                   %.3f" % measure('Top-1-CategoricalAccuracy', y_true, y_pred)
+    eval += f"\n{categorical_measures[3]}:                   %.3f" % measure('Top-5-CategoricalAccuracy', y_true, y_pred)
+    # calculate losses
+    eval += f"\n{categorical_measures[4]}:        %.3f" % measure('CategoricalCrossentropy', y_true, y_pred)
+    eval += f"\n{categorical_measures[5]}:              %.3f" % measure('MeanAbsoluteError', y_true, y_pred)
+    eval += f"\n{categorical_measures[6]}:               %.3f" % measure('MeanSquaredError', y_true, y_pred)
+    eval += f"\n{categorical_measures[7]}:   %.3f" % measure('MeanSquaredLogarithmicError', y_true, y_pred)
+    eval += f"\n{categorical_measures[8]}:           %.3f" % measure('RootMeanSquaredError', y_true, y_pred)
+    eval += f"\n{categorical_measures[9]}:                   %.3f" % measure('LogCoshError', y_true, y_pred)
+    # calculate other measures
+    eval += f"\n{categorical_measures[10]}:                %.3f" % measure('CategoricalHinge', y_true, y_pred)
+    eval += f"\n{categorical_measures[11]}:                %.3f" % measure('CosineSimilarity', y_true, y_pred)
+    eval += f"\n{categorical_measures[12]}:                     %.3f" % measure('KLDivergence', y_true, y_pred)
+    eval += f"\n{categorical_measures[13]}:                          %.3f" % measure('Poisson', y_true, y_pred)
+    
     # print/write the results
     print(eval)
     with open(exp_path(exp_name, "eval.txt"), "+w") as f:
@@ -467,11 +493,11 @@ def pcr_plot(y_true, y_pred, labels, exp_name):
 # ===== evaluation collecting =====
 # =================================
 
-def collect_evaluations(path):
+def collect_evaluations(path, models):
     # excel columns
-    header = ["model", "accuracy", "MSE", "RMSE", "MAE", "Precision", "Recall", "Cohen's Kappa", "MCC", "ROC Score", "True Positive", "True Negative", "False Positive", "False Negative"]
+    header = categorical_measures
     df = pd.DataFrame(columns=header)
-    for model_name in [dirname for dirname in os.listdir(path) if os.path.isdir(os.path.join(path, dirname))]:
+    for model_name in models:
         with open(os.path.join(path, model_name, 'eval.txt')) as f:
             row = [line.split(':')[-1].strip() for line in f.readlines()]
             row.insert(0, model_name)
@@ -561,7 +587,7 @@ def main(args):
                     pcr_plot(y_true, y_pred, labels, exp_name)
                     
         if args.eval:
-            collect_evaluations(exp_path(args.exp_name))
+            collect_evaluations(exp_path(args.exp_name), models)
             print('\n[INFO]  DONE')
 
 if __name__ == "__main__":
