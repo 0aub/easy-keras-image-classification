@@ -166,7 +166,9 @@ def filter_images(data_path):
             except (IOError, SyntaxError) as e:
                 errors.append(img_path)
                 os.remove(img_path)
-    print('Deleted images: ', errors)
+    if len(errors) > 0:
+        print('Deleted images:')
+        [print('\t', file_name) for file_name in errors]
 
 # =================================
 # ====== split data folders =======
@@ -315,12 +317,10 @@ def multiclass_processing(y_test, y_pred, average="macro"):
     return (y_test, y_pred)
 
 def evaluate(y_true, y_pred, exp_name):
-    processed_y_true, processed_y_pred = multiclass_processing(y_true, y_pred)
+    # calculate True Positive, True Negative, False Positive and False Negative rates
+    (TP, FP, TN, FN) = performance_measures(y_true, y_pred)
     # calculate accuracy and loss
-    if num_classes > 2:
-        eval = "accuracy:       %.3f" % categorical_accuracy(y_true, y_pred)
-    else:
-        eval = "accuracy:       %.3f" % binary_accuracy(y_true, y_pred, threshold=0.5)
+    eval = "accuracy:       %.3f" % ((TP + TN) / (TP + FP + TN + FN))
     # calculate Categorical Cross-Entropy
     #eval += "\nloss:          %.3f" % sum([y_true[i] * math.log(y_pred[i]) for i in range(0, len(y_true))])
     # calculate Mean Square Error (MSE)
@@ -338,17 +338,22 @@ def evaluate(y_true, y_pred, exp_name):
     # Calculate Matthews correlation coefficient (MCC)
     eval += "\nMCC:            %.3f" % metrics.matthews_corrcoef(y_true, y_pred)
     # Calculate Receiver Operating Characteristic (ROC)
+    processed_y_true, processed_y_pred = multiclass_processing(y_true, y_pred)
     eval += "\nROC Score:      %.3f" % metrics.roc_auc_score(processed_y_true, processed_y_pred, average="macro")
-    # calculate True Positive, True Negative, False Positive and False Negative rates
+    # assign True Positive, True Negative, False Positive and False Negative rates
     TP, FP, FP, FN = performance_measures(y_true, y_pred)
     eval += "\nTrue Positive:  " + str(TP)
-    eval += "\nTrue Negative:  " + str(FP)
+    eval += "\nTrue Negative:  " + str(TN)
     eval += "\nFalse Positive: " + str(FP)
     eval += "\nFalse Negative: " + str(FN)
     # print/write the results
     print(eval)
-    with open(exp_path(exp_name, "eval.txt"), "w+") as f:
+    with open(exp_path(exp_name, "eval.txt"), "+w") as f:
         f.write(eval)
+    
+    del eval
+    del y_true
+    del y_pred
 
 # =================================
 # ======= show data balance =======
