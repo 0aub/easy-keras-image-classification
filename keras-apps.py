@@ -88,6 +88,7 @@ parser.add_argument("-t", "--train", help="train (default: False)", default=Fals
 parser.add_argument("-e", "--eval", help="eval (default: False)", default=False, action="store_true")
 parser.add_argument("-v", "--vis", help="visualize (default: False)", default=False, action="store_true")
 parser.add_argument("-ct", "--continue-training", help="continue training (default: False)", default=False, action="store_true")
+parser.add_argument("-ce", "--continue-evaluation", help="continue evaluation (default: False)", default=False, action="store_true")
 # model
 parser.add_argument("-sc", "--scratch", help="train model without pre-trained weights (default: False)", default=False, action="store_true")
 parser.add_argument("-m", "--models", help="transfer learning model (default: all)", default="all", nargs='+')
@@ -351,7 +352,8 @@ def measure(title, y_true, y_pred):
         'KLDivergence': KLDivergence(),
         'Poisson': Poisson(),
     }
-    m = measures[title].update_state(y_true, y_pred)
+    m = measures[title]
+    m.update_state(y_true, y_pred)
     return m.result().numpy()
 
 def evaluate(y_true, y_pred, exp_name):
@@ -497,12 +499,13 @@ def collect_evaluations(path, models):
     # excel columns
     header = categorical_measures
     df = pd.DataFrame(columns=header)
-    for model_name in models:
+    for i, model_name in enumerate(models):
         with open(os.path.join(path, model_name, 'eval.txt')) as f:
             row = [line.split(':')[-1].strip() for line in f.readlines()]
             row.insert(0, model_name)
-            df = df.append(row)
-    df.to_excel(os.path.join(path, "results.xlsx"), index=False)
+            df.iloc[i] = row
+    exp_name = path.split('/')[-1]
+    df.to_excel(os.path.join(path, f"{exp_name}-results.xlsx"), index=False)
 
 # =================================
 # ========= main function =========
@@ -559,19 +562,20 @@ def main(args):
 
             # important variables for model evaluation and progress visualization
             if args.eval or args.vis:
-                # extract x_val and y_val from validation generator
-                print("\n[INFO]  extracting validation values...\n")
-                (x_val, y_val) = data_extraction(validation_generator, args.batch_size, "validation")
-                # load saved model
-                model = load_model(exp_path(exp_name, "model"))
-                # get y_true and y_pred
-                (y_true, y_pred) = y_true_pred(model, x_val, y_val)
+                if args.vis or not os.path.exists(exp_path(exp_name, "eval.txt")) or not args.continue_evaluation:
+                    # extract x_val and y_val from validation generator
+                    print(f"\n[INFO]  extracting validation values for {model_name} ...\n")
+                    (x_val, y_val) = data_extraction(validation_generator, args.batch_size, "validation")
+                    # load saved model
+                    model = load_model(exp_path(exp_name, "model"))
+                    # get y_true and y_pred
+                    (y_true, y_pred) = y_true_pred(model, x_val, y_val)
 
-                # model evaluation
-                if args.eval:
-                    # evaluate the model
-                    print(f"\n[INFO]  {model_name} evaluation...\n")
-                    evaluate(y_true, y_pred, exp_name)
+                    # model evaluation
+                    if args.eval:
+                        # evaluate the model
+                        print(f"\n[INFO]  {model_name} evaluation...\n")
+                        evaluate(y_true, y_pred, exp_name)
 
                 # model visualization
                 if args.vis:
