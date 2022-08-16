@@ -86,7 +86,7 @@ parser.add_argument("-tr", "--training-ratio", help="training ratio (default: 0.
 # run settings
 parser.add_argument("-t", "--train", help="train (default: False)", default=False, action="store_true")
 parser.add_argument("-e", "--eval", help="eval (default: False)", default=False, action="store_true")
-parser.add_argument("-v", "--vis", help="visualize (default: False)", default=False, action="store_true")
+parser.add_argument("-v", "--vis", help="visualization [data-balance, accuracy-loss, confusion-matrix]", default=None, nargs='+')
 parser.add_argument("-ct", "--continue-training", help="continue training (default: False)", default=False, action="store_true")
 parser.add_argument("-ce", "--continue-evaluation", help="continue evaluation (default: False)", default=False, action="store_true")
 # model
@@ -498,7 +498,7 @@ def pcr_plot(y_true, y_pred, labels, exp_name):
     plt.savefig(exp_path(exp_name, "pcr"), dpi=300)
     
 # =================================
-# ===== evaluation collecting =====
+# ========== collections ==========
 # =================================
 
 def collect_evaluations(path, models):
@@ -511,7 +511,33 @@ def collect_evaluations(path, models):
             row.insert(0, model_name)
             df.iloc[i] = row
     exp_name = path.split('/')[-1]
-    df.to_excel(os.path.join(path, f"{exp_name}-results.xlsx"), index=False)
+    df.to_excel(os.path.join(path, f"{exp_name}-results.xlsx"), index=False)\
+
+def collect_visualizations(variable, path, models):
+    # style
+    plt.rc("axes", facecolor="#E6E6E6", edgecolor="none", axisbelow=True, grid=True)
+    plt.rc("grid", color="w", linestyle="solid")
+    plt.rc("xtick", direction="out", color="gray")
+    plt.rc("ytick", direction="out", color="gray")
+    plt.rc("patch", edgecolor="#E6E6E6")
+    plt.rc("lines", linewidth=2)
+    # figure
+    plt.figure(figsize=(12, 6))
+    # collection loop
+    for model_name in models:
+        # load history
+        history = pickle.load(open(os.path.join(path, model_name, "history"), "rb"))
+        # plot
+        victor = history[variable]
+        # plot variables
+        plt.plot(victor, label=model_name)
+    # plot labels
+    title = 'Accuracy' if 'acc' in variable else 'Loss'
+    plt.title(f'Models Validation {title} Collections')
+    plt.ylabel(variable.replace('val_', 'validation '))
+    plt.xlabel("epochs")
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.savefig(os.path.join(path, model_name, f"{variable}-collection"), dpi=300)
 
 # =================================
 # ========= main function =========
@@ -533,7 +559,7 @@ def main(args):
     else:
         raise Exception("please run the code properly. for more information: https://github.com/0aub/image-classification")
     
-    if args.train or args.eval or args.vis:
+    if args.train or args.eval or args.vis is not None:
         # create data generators
         print("\n[INFO]  create generators...\n")
         (train_generator, validation_generator) = data_generators(train_path, val_path, args.input_size, args.batch_size, args.seed)
@@ -567,8 +593,8 @@ def main(args):
                 )
 
             # important variables for model evaluation and progress visualization
-            if args.eval or args.vis:
-                if args.vis or not os.path.exists(exp_path(exp_name, "eval.txt")) or not args.continue_evaluation:
+            if args.eval or args.vis is not None:
+                if 'confusion-matrix' in args.vis or not os.path.exists(exp_path(exp_name, "eval.txt")) or not args.continue_evaluation:
                     # extract x_val and y_val from validation generator
                     print(f"\n[INFO]  extracting validation values for {model_name} ...\n")
                     (x_val, y_val) = data_extraction(validation_generator, args.batch_size, "validation")
@@ -584,21 +610,25 @@ def main(args):
                         evaluate(y_true, y_pred, speed, exp_name)
 
                 # model visualization
-                if args.vis:
-                    print('\n[INFO]  saving data labels balance...')
+                print()
+                if 'accuracy-loss' in args.vis:
+                    print(f'[INFO]  saving {model_name} data labels balance...')
                     data_balance_plot(args.data_path, args.splitted_data_path, exp_name)
-                    print(f'[INFO]  saving {model_name} training validation progress...')
+                if 'data-balance' in args.vis:
+                    print(f'[INFO]  saving {model_name} training/validation progress...')
                     train_val_history_plot(exp_name)
-                    print('[INFO]  saving predictions confusion matrix...')
+                if 'confusion-matrix' in args.vis:
+                    print(f'[INFO]  saving {model_name} predictions confusion matrix...')
                     confusion_matrix_plot(y_true, y_pred, exp_name)
-                    print('[INFO]  saving receiver operating characteristic curve...')
-                    roc_plot(y_true, y_pred, labels, exp_name)
-                    print('[INFO]  saving precision recall curve...')
-                    pcr_plot(y_true, y_pred, labels, exp_name)
                     
         if args.eval:
             collect_evaluations(exp_path(args.exp_name), models)
-            print('\n[INFO]  DONE')
+            print('\n[INFO]  evaluations collected!')
+            
+        if 'accuracy-loss' in args.vis:
+            collect_visualizations('val_accuracy', exp_path(args.exp_name), models)
+            collect_visualizations('val_loss', exp_path(args.exp_name), models)
+            print('\n[INFO]  visualizations collected!')
 
 if __name__ == "__main__":
     main(args)
