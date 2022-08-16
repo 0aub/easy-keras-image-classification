@@ -67,9 +67,9 @@ import seaborn as sns
 from PIL import Image
 from tqdm import tqdm
 import pickle
+import time
 import splitfolders
 import argparse
-import math
 import os
 
 # =================================
@@ -333,7 +333,12 @@ def multiclass_processing(y_test, y_pred, average="macro"):
 
 def y_true_pred(model, x, y):
     preds = model.predict(x)
-    return (y, preds)
+    # calculate prediction speed
+    start = time.time()
+    one_sample = np.expand_dims(x[0], axis=0)
+    model.predict(one_sample)
+    speed = time.time() - start
+    return (y, preds, speed)
 
 def measure(title, y_true, y_pred):
     measures = {
@@ -356,29 +361,30 @@ def measure(title, y_true, y_pred):
     m.update_state(y_true, y_pred)
     return m.result().numpy()
 
-def evaluate(y_true, y_pred, exp_name):
+def evaluate(y_true, y_pred, speed, exp_name):
     # calculate accuracy
-    eval = f"{categorical_measures[1]}:                         %.3f" % measure('CategoricalAccuracy', y_true, y_pred)
-    eval += f"\n{categorical_measures[2]}:                   %.3f" % measure('Top-1-CategoricalAccuracy', y_true, y_pred)
-    eval += f"\n{categorical_measures[3]}:                   %.3f" % measure('Top-5-CategoricalAccuracy', y_true, y_pred)
+    eval = f"{categorical_measures[1]}:                             %.3f" % measure('CategoricalAccuracy', y_true, y_pred)
+    eval += f"\n{categorical_measures[2]}:                       %.3f" % measure('Top-1-CategoricalAccuracy', y_true, y_pred)
+    eval += f"\n{categorical_measures[3]}:                       %.3f" % measure('Top-5-CategoricalAccuracy', y_true, y_pred)
     # calculate losses
-    eval += f"\n{categorical_measures[4]}:        %.3f" % measure('CategoricalCrossentropy', y_true, y_pred)
-    eval += f"\n{categorical_measures[5]}:              %.3f" % measure('MeanAbsoluteError', y_true, y_pred)
-    eval += f"\n{categorical_measures[6]}:               %.3f" % measure('MeanSquaredError', y_true, y_pred)
-    eval += f"\n{categorical_measures[7]}:   %.3f" % measure('MeanSquaredLogarithmicError', y_true, y_pred)
-    eval += f"\n{categorical_measures[8]}:           %.3f" % measure('RootMeanSquaredError', y_true, y_pred)
-    eval += f"\n{categorical_measures[9]}:                   %.3f" % measure('LogCoshError', y_true, y_pred)
+    eval += f"\n{categorical_measures[4]}:            %.3f" % measure('CategoricalCrossentropy', y_true, y_pred)
+    eval += f"\n{categorical_measures[5]}:                  %.3f" % measure('MeanAbsoluteError', y_true, y_pred)
+    eval += f"\n{categorical_measures[6]}:                   %.3f" % measure('MeanSquaredError', y_true, y_pred)
+    eval += f"\n{categorical_measures[7]}:       %.3f" % measure('MeanSquaredLogarithmicError', y_true, y_pred)
+    eval += f"\n{categorical_measures[8]}:               %.3f" % measure('RootMeanSquaredError', y_true, y_pred)
+    eval += f"\n{categorical_measures[9]}:                       %.3f" % measure('LogCoshError', y_true, y_pred)
     # calculate other measures
-    eval += f"\n{categorical_measures[10]}:                %.3f" % measure('CategoricalHinge', y_true, y_pred)
-    eval += f"\n{categorical_measures[11]}:                %.3f" % measure('CosineSimilarity', y_true, y_pred)
-    eval += f"\n{categorical_measures[12]}:                     %.3f" % measure('KLDivergence', y_true, y_pred)
-    eval += f"\n{categorical_measures[13]}:                          %.3f" % measure('Poisson', y_true, y_pred)
-    
+    eval += f"\n{categorical_measures[10]}:                    %.3f" % measure('CategoricalHinge', y_true, y_pred)
+    eval += f"\n{categorical_measures[11]}:                    %.3f" % measure('CosineSimilarity', y_true, y_pred)
+    eval += f"\n{categorical_measures[12]}:                         %.3f" % measure('KLDivergence', y_true, y_pred)
+    eval += f"\n{categorical_measures[13]}:                              %.3f" % measure('Poisson', y_true, y_pred)
+    # prediction speed
+    eval += "\nPrediction time for one sample:    %.3f ms" % speed
     # print/write the results
     print(eval)
     with open(exp_path(exp_name, "eval.txt"), "+w") as f:
         f.write(eval)
-    
+    # delete variables to decrease ram usage
     del eval
     del y_true
     del y_pred
@@ -569,13 +575,13 @@ def main(args):
                     # load saved model
                     model = load_model(exp_path(exp_name, "model"))
                     # get y_true and y_pred
-                    (y_true, y_pred) = y_true_pred(model, x_val, y_val)
+                    (y_true, y_pred, speed) = y_true_pred(model, x_val, y_val)
 
                     # model evaluation
                     if args.eval:
                         # evaluate the model
                         print(f"\n[INFO]  {model_name} evaluation...\n")
-                        evaluate(y_true, y_pred, exp_name)
+                        evaluate(y_true, y_pred, speed, exp_name)
 
                 # model visualization
                 if args.vis:
