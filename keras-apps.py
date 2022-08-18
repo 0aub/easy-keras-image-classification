@@ -510,8 +510,6 @@ def collect_evaluations(path, models):
         with open(os.path.join(path, model_name, 'eval.txt')) as f:
             row = [line.split(':')[-1].strip() for line in f.readlines()]
             row.insert(0, model_name)
-            print(header)
-            print(row)
             df.loc[len(df)] = row
     exp_name = path.split('/')[-1]
     df.to_excel(os.path.join(path, f"{exp_name}-results.xlsx"), index=False)\
