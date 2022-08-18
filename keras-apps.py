@@ -540,7 +540,7 @@ def collect_visualizations(variable, path, models):
     plt.ylabel(variable.replace('val_', 'validation '))
     plt.xlabel("epochs")
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    plt.savefig(os.path.join(path, model_name, f"{variable}-collection"), dpi=300)
+    plt.savefig(os.path.join(path, f"{variable}-collection"), dpi=300)
 
 # =================================
 # ========= main function =========
@@ -628,7 +628,7 @@ def main(args):
             collect_evaluations(exp_path(args.exp_name), models)
             print('\n[INFO]  evaluations collected!')
             
-        if 'accuracy-loss' in args.vis:
+        if 'accuracy-loss-collection' in args.vis:
             collect_visualizations('val_accuracy', exp_path(args.exp_name), models)
             collect_visualizations('val_loss', exp_path(args.exp_name), models)
             print('\n[INFO]  visualizations collected!')
