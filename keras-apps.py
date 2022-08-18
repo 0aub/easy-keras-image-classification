@@ -177,6 +177,7 @@ categorical_measures = [
     'Cosine Similarity',
     'KLDivergence',
     'Poisson',
+    'Prediction time for one sample'
 ]
 
 # =================================
@@ -379,7 +380,7 @@ def evaluate(y_true, y_pred, speed, exp_name):
     eval += f"\n{categorical_measures[12]}:                         %.3f" % measure('KLDivergence', y_true, y_pred)
     eval += f"\n{categorical_measures[13]}:                              %.3f" % measure('Poisson', y_true, y_pred)
     # prediction speed
-    eval += "\nPrediction time for one sample:    %.3f ms" % speed
+    eval += f"\n{categorical_measures[14]}:       %.3f ms" % speed
     # print/write the results
     print(eval)
     with open(exp_path(exp_name, "eval.txt"), "+w") as f:
@@ -505,11 +506,13 @@ def collect_evaluations(path, models):
     # excel columns
     header = categorical_measures
     df = pd.DataFrame(columns=header)
-    for i, model_name in enumerate(models):
+    for model_name in models:
         with open(os.path.join(path, model_name, 'eval.txt')) as f:
             row = [line.split(':')[-1].strip() for line in f.readlines()]
             row.insert(0, model_name)
-            df.iloc[i] = row
+            print(header)
+            print(row)
+            df.loc[len(df)] = row
     exp_name = path.split('/')[-1]
     df.to_excel(os.path.join(path, f"{exp_name}-results.xlsx"), index=False)\
 
@@ -611,10 +614,10 @@ def main(args):
 
                 # model visualization
                 print()
-                if 'accuracy-loss' in args.vis:
+                if 'data-balance' in args.vis:
                     print(f'[INFO]  saving {model_name} data labels balance...')
                     data_balance_plot(args.data_path, args.splitted_data_path, exp_name)
-                if 'data-balance' in args.vis:
+                if 'accuracy-loss' in args.vis:
                     print(f'[INFO]  saving {model_name} training/validation progress...')
                     train_val_history_plot(exp_name)
                 if 'confusion-matrix' in args.vis:
