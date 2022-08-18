@@ -626,7 +626,7 @@ def main(args):
             collect_evaluations(exp_path(args.exp_name), models)
             print('\n[INFO]  evaluations collected!')
             
-        if 'accuracy-loss-collection' in args.vis:
+        if args.vis is not None and 'accuracy-loss-collection' in args.vis:
             collect_visualizations('val_accuracy', exp_path(args.exp_name), models)
             collect_visualizations('val_loss', exp_path(args.exp_name), models)
             print('\n[INFO]  visualizations collected!')
