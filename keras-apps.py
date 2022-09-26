@@ -83,6 +83,7 @@ parser.add_argument("-en", "--exp-name", help="experiment name (default: mobile-
 parser.add_argument("-d", "--data-path", help="data path (default: ./data)", default="./data", type=str)
 parser.add_argument("-sd", "--splitted-data-path", help="splitted data path (default: ./splitted_data)", default="./splitted_data", type=str)
 parser.add_argument("-tr", "--training-ratio", help="training ratio (default: 0.8)", default=0.8, type=float)
+parser.add_argument("-aug", "--augmentation", help="apply traditional data augmentation (default: False)", default=False, action="store_true")
 # run settings
 parser.add_argument("-t", "--train", help="train (default: False)", default=False, action="store_true")
 parser.add_argument("-e", "--eval", help="eval (default: False)", default=False, action="store_true")
@@ -223,10 +224,18 @@ def split_data_folders(data_path, splitted_data_path, train_ratio, seed):
 # ======= data generators =========
 # =================================
 
-def data_generators(train_path, val_path, input_size, batch_size, seed):
+def data_generators(train_path, val_path, input_size, batch_size, aug, seed):
     # create training and validation generators
     # generators are basically like pytorch data loaders
-    train_datagen = ImageDataGenerator()
+    train_datagen = ImageDataGenerator(
+        featurewise_center=True,
+        featurewise_std_normalization=True,
+        rotation_range=20,
+        width_shift_range=0.2,
+        height_shift_range=0.2,
+        horizontal_flip=True,
+        validation_split=0.2
+        ) if aug else ImageDataGenerator()
     train_generator = train_datagen.flow_from_directory(
         train_path,
         target_size=(input_size, input_size),
@@ -563,7 +572,7 @@ def main(args):
     if args.train or args.eval or args.vis is not None:
         # create data generators
         print("\n[INFO]  create generators...\n")
-        (train_generator, validation_generator) = data_generators(train_path, val_path, args.input_size, args.batch_size, args.seed)
+        (train_generator, validation_generator) = data_generators(train_path, val_path, args.input_size, args.batch_size, args.aug, args.seed)
         
         # main loop
         models = list(transfer_learning_models.keys()) if 'all' in args.models else args.models
