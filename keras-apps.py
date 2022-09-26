@@ -572,7 +572,7 @@ def main(args):
     if args.train or args.eval or args.vis is not None:
         # create data generators
         print("\n[INFO]  create generators...\n")
-        (train_generator, validation_generator) = data_generators(train_path, val_path, args.input_size, args.batch_size, args.aug, args.seed)
+        (train_generator, validation_generator) = data_generators(train_path, val_path, args.input_size, args.batch_size, args.augmentation, args.seed)
         
         # main loop
         models = list(transfer_learning_models.keys()) if 'all' in args.models else args.models
