@@ -228,7 +228,6 @@ def data_generators(train_path, val_path, input_size, batch_size, aug, seed):
     # create training and validation generators
     # generators are basically like pytorch data loaders
     train_datagen = ImageDataGenerator(
-        rescale=1./255,
         shear_range=0.2,
         rotation_range=20,
         width_shift_range=0.2,
