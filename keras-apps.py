@@ -167,8 +167,9 @@ transfer_learning_models = {
 categorical_measures = [
     'Model',
     'Accuracy',
-    'Top 1 Accuracy',
-    'Top 5 Accuracy',
+    'recall',
+    'precision',
+    'f1',
     'Categorical Cross-Entropy',
     'Mean Absolute Error',
     'Mean Squared Error',
@@ -180,9 +181,6 @@ categorical_measures = [
     'KLDivergence',
     'Poisson',
     'Prediction time for one sample',
-    'recall',
-    'precision',
-    'f1',
 ]
 
 # =================================
@@ -394,26 +392,24 @@ def measure(title, y_true, y_pred):
 def evaluate(y_true, y_pred, speed, exp_name):
     # calculate accuracy
     eval = f"{categorical_measures[1]}:                             %.3f" % measure('CategoricalAccuracy', y_true, y_pred)
-    # eval += f"\n{categorical_measures[2]}:                       %.3f" % measure('Top-1-CategoricalAccuracy', y_true, y_pred)
-    # eval += f"\n{categorical_measures[3]}:                       %.3f" % measure('Top-5-CategoricalAccuracy', y_true, y_pred)
     # recall, precision, and f1 measures
-    eval += f"\n{categorical_measures[15]}:                               %.3f" % recall_measure(y_true, y_pred)
-    eval += f"\n{categorical_measures[16]}:                            %.3f" % precision_measure(y_true, y_pred)
-    eval += f"\n{categorical_measures[17]}:                                   %.3f" % f1_measure(y_true, y_pred)
+    eval += f"\n{categorical_measures[2]}:                               %.3f" % recall_measure(y_true, y_pred)
+    eval += f"\n{categorical_measures[3]}:                            %.3f" % precision_measure(y_true, y_pred)
+    eval += f"\n{categorical_measures[4]}:                                   %.3f" % f1_measure(y_true, y_pred)
     # calculate losses
-    eval += f"\n{categorical_measures[4]}:            %.3f" % measure('CategoricalCrossentropy', y_true, y_pred)
-    eval += f"\n{categorical_measures[5]}:                  %.3f" % measure('MeanAbsoluteError', y_true, y_pred)
-    eval += f"\n{categorical_measures[6]}:                   %.3f" % measure('MeanSquaredError', y_true, y_pred)
-    eval += f"\n{categorical_measures[7]}:       %.3f" % measure('MeanSquaredLogarithmicError', y_true, y_pred)
-    eval += f"\n{categorical_measures[8]}:               %.3f" % measure('RootMeanSquaredError', y_true, y_pred)
-    eval += f"\n{categorical_measures[9]}:                       %.3f" % measure('LogCoshError', y_true, y_pred)
+    eval += f"\n{categorical_measures[5]}:            %.3f" % measure('CategoricalCrossentropy', y_true, y_pred)
+    eval += f"\n{categorical_measures[6]}:                  %.3f" % measure('MeanAbsoluteError', y_true, y_pred)
+    eval += f"\n{categorical_measures[7]}:                   %.3f" % measure('MeanSquaredError', y_true, y_pred)
+    eval += f"\n{categorical_measures[8]}:       %.3f" % measure('MeanSquaredLogarithmicError', y_true, y_pred)
+    eval += f"\n{categorical_measures[9]}:               %.3f" % measure('RootMeanSquaredError', y_true, y_pred)
+    eval += f"\n{categorical_measures[10]}:                       %.3f" % measure('LogCoshError', y_true, y_pred)
     # calculate other measures
-    eval += f"\n{categorical_measures[10]}:                    %.3f" % measure('CategoricalHinge', y_true, y_pred)
-    eval += f"\n{categorical_measures[11]}:                    %.3f" % measure('CosineSimilarity', y_true, y_pred)
-    eval += f"\n{categorical_measures[12]}:                         %.3f" % measure('KLDivergence', y_true, y_pred)
-    eval += f"\n{categorical_measures[13]}:                              %.3f" % measure('Poisson', y_true, y_pred)
+    eval += f"\n{categorical_measures[11]}:                    %.3f" % measure('CategoricalHinge', y_true, y_pred)
+    eval += f"\n{categorical_measures[12]}:                    %.3f" % measure('CosineSimilarity', y_true, y_pred)
+    eval += f"\n{categorical_measures[13]}:                         %.3f" % measure('KLDivergence', y_true, y_pred)
+    eval += f"\n{categorical_measures[14]}:                              %.3f" % measure('Poisson', y_true, y_pred)
     # prediction speed
-    eval += f"\n{categorical_measures[14]}:       %.3f ms" % speed
+    eval += f"\n{categorical_measures[15]}:       %.3f ms" % speed
     # print/write the results
     print(eval)
     with open(exp_path(exp_name, "eval.txt"), "+w") as f:
