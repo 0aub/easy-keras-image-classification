@@ -54,6 +54,7 @@ from tensorflow.keras.applications import (
 )
 from tensorflow.keras.layers import Dense, Dropout, Flatten
 from tensorflow.keras.optimizers import Adam, SGD
+from keras import backend as K
 
 from sklearn.preprocessing import LabelBinarizer
 from sklearn import metrics
@@ -178,7 +179,10 @@ categorical_measures = [
     'Cosine Similarity',
     'KLDivergence',
     'Poisson',
-    'Prediction time for one sample'
+    'Prediction time for one sample',
+    'recall',
+    'precision',
+    'f1',
 ]
 
 # =================================
@@ -349,6 +353,23 @@ def y_true_pred(model, x, y):
     speed = time.time() - start
     return (y, preds, speed)
 
+def recall(y_true, y_pred):
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+    recall = true_positives / (possible_positives + K.epsilon())
+    return recall
+
+def precision(y_true, y_pred):
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+    precision = true_positives / (predicted_positives + K.epsilon())
+    return precision
+
+def f1(y_true, y_pred):
+    precision = precision_m(y_true, y_pred)
+    recall = recall_m(y_true, y_pred)
+    return 2*((precision*recall)/(precision+recall+K.epsilon()))
+
 def measure(title, y_true, y_pred):
     measures = {
         'CategoricalAccuracy': CategoricalAccuracy(),
@@ -389,6 +410,10 @@ def evaluate(y_true, y_pred, speed, exp_name):
     eval += f"\n{categorical_measures[13]}:                              %.3f" % measure('Poisson', y_true, y_pred)
     # prediction speed
     eval += f"\n{categorical_measures[14]}:       %.3f ms" % speed
+    # recall, precision, and f1 measures
+    eval += f"\n{categorical_measures[15]}:                               %.3f" % recall(y_true, y_pred)
+    eval += f"\n{categorical_measures[16]}:                            %.3f" % precision(y_true, y_pred)
+    eval += f"\n{categorical_measures[17]}:                                   %.3f" % f1(y_true, y_pred)
     # print/write the results
     print(eval)
     with open(exp_path(exp_name, "eval.txt"), "+w") as f:
