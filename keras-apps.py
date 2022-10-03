@@ -394,8 +394,12 @@ def measure(title, y_true, y_pred):
 def evaluate(y_true, y_pred, speed, exp_name):
     # calculate accuracy
     eval = f"{categorical_measures[1]}:                             %.3f" % measure('CategoricalAccuracy', y_true, y_pred)
-    eval += f"\n{categorical_measures[2]}:                       %.3f" % measure('Top-1-CategoricalAccuracy', y_true, y_pred)
-    eval += f"\n{categorical_measures[3]}:                       %.3f" % measure('Top-5-CategoricalAccuracy', y_true, y_pred)
+    # eval += f"\n{categorical_measures[2]}:                       %.3f" % measure('Top-1-CategoricalAccuracy', y_true, y_pred)
+    # eval += f"\n{categorical_measures[3]}:                       %.3f" % measure('Top-5-CategoricalAccuracy', y_true, y_pred)
+    # recall, precision, and f1 measures
+    eval += f"\n{categorical_measures[15]}:                               %.3f" % recall_measure(y_true, y_pred)
+    eval += f"\n{categorical_measures[16]}:                            %.3f" % precision_measure(y_true, y_pred)
+    eval += f"\n{categorical_measures[17]}:                                   %.3f" % f1_measure(y_true, y_pred)
     # calculate losses
     eval += f"\n{categorical_measures[4]}:            %.3f" % measure('CategoricalCrossentropy', y_true, y_pred)
     eval += f"\n{categorical_measures[5]}:                  %.3f" % measure('MeanAbsoluteError', y_true, y_pred)
@@ -410,10 +414,6 @@ def evaluate(y_true, y_pred, speed, exp_name):
     eval += f"\n{categorical_measures[13]}:                              %.3f" % measure('Poisson', y_true, y_pred)
     # prediction speed
     eval += f"\n{categorical_measures[14]}:       %.3f ms" % speed
-    # recall, precision, and f1 measures
-    eval += f"\n{categorical_measures[15]}:                               %.3f" % recall(y_true, y_pred)
-    eval += f"\n{categorical_measures[16]}:                            %.3f" % precision(y_true, y_pred)
-    eval += f"\n{categorical_measures[17]}:                                   %.3f" % f1(y_true, y_pred)
     # print/write the results
     print(eval)
     with open(exp_path(exp_name, "eval.txt"), "+w") as f:
